@@ -14,6 +14,7 @@
     "psr/http-message": "^1.0 || ^2.0",
     "psr/log": "^2.0 || ^3.0",
     "symfony/console": "^6.2",
+    "membrane/openapi-reader": "dev-main",
     "membrane/openapi-router": "^0.1.0 || ^0.2.0"
   },
   "require-dev": {
