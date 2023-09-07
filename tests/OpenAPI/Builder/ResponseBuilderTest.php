@@ -12,7 +12,6 @@ use Membrane\OpenAPI\Exception\CannotProcessOpenAPI;
 use Membrane\OpenAPI\Exception\CannotProcessResponse;
 use Membrane\OpenAPI\Exception\CannotProcessSpecification;
 use Membrane\OpenAPI\ExtractPathParameters\PathMatcher;
-use Membrane\OpenAPI\Method;
 use Membrane\OpenAPI\Processor\AllOf;
 use Membrane\OpenAPI\Processor\AnyOf;
 use Membrane\OpenAPI\Processor\OneOf;
@@ -26,6 +25,7 @@ use Membrane\OpenAPI\Specification\OpenAPIResponse;
 use Membrane\OpenAPI\Specification\Response;
 use Membrane\OpenAPI\Specification\Strings;
 use Membrane\OpenAPI\Specification\TrueFalse;
+use Membrane\OpenAPIReader\Method;
 use Membrane\Processor;
 use Membrane\Processor\BeforeSet;
 use Membrane\Processor\Collection;
@@ -77,7 +77,6 @@ use PHPUnit\Framework\TestCase;
 #[UsesClass(AllOf::class)]
 #[UsesClass(AnyOf::class)]
 #[UsesClass(OneOf::class)]
-#[UsesClass(OpenAPIFileReader::class)]
 #[UsesClass(APISchema::class)]
 #[UsesClass(Arrays::class)]
 #[UsesClass(TrueFalse::class)]
@@ -341,14 +340,15 @@ class ResponseBuilderTest extends TestCase
                     '219'
                 ),
                 new AnyOf(
-                    '', new Field('', new IsNull()), new Field(
+                    '',
+                    new Field('', new IsNull()),
+                    new Field(
                         '',
                         new IsNumber(),
                         new Contained([1, 2.3, 4]),
                         new Maximum(99.99, true),
                         new Minimum(6.66),
                         new MultipleOf(3.33)
-
                     )
                 ),
             ],
@@ -527,7 +527,6 @@ class ResponseBuilderTest extends TestCase
                             new Contained([[1, 2.0, null], [4.0, null, 6]]),
                             new Count(2, 5),
                             new Unique()
-
                         ),
                         new AnyOf('', new Field('', new IsNull()), new Field('', new IsNumber()))
                     )
@@ -560,7 +559,6 @@ class ResponseBuilderTest extends TestCase
                     '',
                     new Field('', new IsNull()),
                     new FieldSet('', new BeforeSet(new IsArray()), new Field('price', new IsFloat()))
-
                 ),
             ],
             'object with (string) name, (int) id, (bool) status' => [

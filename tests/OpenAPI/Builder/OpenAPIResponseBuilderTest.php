@@ -229,7 +229,6 @@ class OpenAPIResponseBuilderTest extends TestCase
                         new Maximum(100),
                         new Minimum(0, true),
                         new MultipleOf(3)
-
                     )
                 ),
             ],
@@ -288,14 +287,15 @@ class OpenAPIResponseBuilderTest extends TestCase
                     $noReferences->paths->getPath('/responsepath')->get->responses->getResponse('219')
                 ),
                 new AnyOf(
-                    '', new Field('', new IsNull()), new Field(
+                    '',
+                    new Field('', new IsNull()),
+                    new Field(
                         '',
                         new IsNumber(),
                         new Contained([1, 2.3, 4]),
                         new Maximum(99.99, true),
                         new Minimum(6.66),
                         new MultipleOf(3.33)
-
                     )
                 ),
             ],
@@ -489,7 +489,6 @@ class OpenAPIResponseBuilderTest extends TestCase
                             new Contained([[1, 2.0, null], [4.0, null, 6]]),
                             new Count(2, 5),
                             new Unique()
-
                         ),
                         new AnyOf('', new Field('', new IsNull()), new Field('', new IsNumber()))
                     )
@@ -529,7 +528,6 @@ class OpenAPIResponseBuilderTest extends TestCase
                     '',
                     new Field('', new IsNull()),
                     new FieldSet('', new BeforeSet(new IsArray()), new Field('price', new IsFloat()))
-
                 ),
             ],
             'object with (string) name, (int) id, (bool) status' => [

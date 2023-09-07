@@ -25,13 +25,11 @@ use Membrane\OpenAPI\ExtractPathParameters\PathMatcher as PathMatcherClass;
 use Membrane\OpenAPI\ExtractPathParameters\PathParameterExtractor;
 use Membrane\OpenAPI\Filter\HTTPParameters;
 use Membrane\OpenAPI\Filter\PathMatcher;
-use Membrane\OpenAPI\Method;
-use Membrane\OpenAPI\Processor\Json;
 use Membrane\OpenAPI\Processor\Request as RequestProcessor;
-use Membrane\OpenAPI\Reader\OpenAPIFileReader;
 use Membrane\OpenAPI\Specification\APISchema;
 use Membrane\OpenAPI\Specification\OpenAPIRequest;
 use Membrane\OpenAPI\Specification\Request;
+use Membrane\OpenAPIReader\Method;
 use Membrane\Processor;
 use Membrane\Processor\BeforeSet;
 use Membrane\Processor\Collection;
@@ -72,7 +70,6 @@ use Psr\Http\Message\ServerRequestInterface;
 #[UsesClass(PathParameterExtractor::class)]
 #[UsesClass(PathMatcherClass::class)]
 #[UsesClass(RequestProcessor::class)]
-#[UsesClass(OpenAPIFileReader::class)]
 #[UsesClass(APISchema::class)]
 #[UsesClass(\Membrane\OpenAPI\Specification\Arrays::class)]
 #[UsesClass(\Membrane\OpenAPI\Specification\Numeric::class)]
@@ -347,7 +344,6 @@ class OpenAPIRequestBuilderTest extends TestCase
                         'cookie' => new FieldSet('cookie'),
                         'body' => new Field('requestBody', new Passes()),
                     ]
-
                 ),
             ],
             'Request: path param in header, operation param in cookie, no requestBody' => [
@@ -372,7 +368,6 @@ class OpenAPIRequestBuilderTest extends TestCase
                         'cookie' => new FieldSet('cookie', new Field('name', new IsString())),
                         'body' => new Field('requestBody', new Passes()),
                     ]
-
                 ),
             ],
             'Request: identical param in header and query, no requestBody' => [
@@ -401,7 +396,6 @@ class OpenAPIRequestBuilderTest extends TestCase
                         'cookie' => new FieldSet('cookie'),
                         'body' => new Field('requestBody', new Passes()),
                     ]
-
                 ),
             ],
             'Request: same param in path and operation with different types, no requestBody' => [
@@ -426,7 +420,6 @@ class OpenAPIRequestBuilderTest extends TestCase
                         'cookie' => new FieldSet('cookie'),
                         'body' => new Field('requestBody', new Passes()),
                     ]
-
                 ),
             ],
             'Request: requestBody param' => [
@@ -451,7 +444,6 @@ class OpenAPIRequestBuilderTest extends TestCase
                         'cookie' => new FieldSet('cookie'),
                         'body' => new Field('requestBody', new IsInt()),
                     ]
-
                 ),
             ],
             'Request: operation param in query, requestBody param' => [
@@ -480,7 +472,6 @@ class OpenAPIRequestBuilderTest extends TestCase
                         'cookie' => new FieldSet('cookie'),
                         'body' => new Field('requestBody', new IsInt()),
                     ]
-
                 ),
             ],
             'Request: path param in path, operation param in query, header, cookie, requestBody param' => [

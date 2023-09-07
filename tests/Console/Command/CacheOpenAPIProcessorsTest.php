@@ -17,10 +17,10 @@ use Membrane\OpenAPI\ContentType;
 use Membrane\OpenAPI\Exception\CannotReadOpenAPI;
 use Membrane\OpenAPI\ExtractPathParameters\PathParameterExtractor;
 use Membrane\OpenAPI\Filter\PathMatcher;
-use Membrane\OpenAPI\Method;
 use Membrane\OpenAPI\Processor\Request;
 use Membrane\OpenAPI\Reader\OpenAPIFileReader;
 use Membrane\OpenAPI\Specification as Specification;
+use Membrane\OpenAPIReader\Method;
 use Membrane\Processor;
 use Membrane\Validator\{FieldSet as FieldSetValidator, Type as TypeValidator, Utility as UtilityValidator};
 use org\bovigo\vfs\{vfsStream, vfsStreamDirectory};
@@ -35,7 +35,6 @@ use Symfony\Component\Console\Tester\CommandTester;
 #[UsesClass(Template\Processor::class)]
 #[UsesClass(Template\ResponseBuilder::class)]
 #[UsesClass(Template\RequestBuilder::class)]
-#[UsesClass(OpenAPIFileReader::class)]
 #[UsesClass(Builder\APIBuilder::class)]
 #[UsesClass(Builder\Arrays::class)]
 #[UsesClass(Builder\Numeric::class)]
@@ -136,7 +135,7 @@ class CacheOpenAPIProcessorsTest extends TestCase
                     new Specification\OpenAPIRequest(
                         new PathParameterExtractor('/pets'),
                         $petstoreExpandedOpenApi->paths->getPath('/pets'),
-                        Membrane\OpenAPI\Method::GET
+                        Membrane\OpenAPIReader\Method::GET
                     )
                 ),
             ],
@@ -175,7 +174,7 @@ class CacheOpenAPIProcessorsTest extends TestCase
                     new Specification\OpenAPIRequest(
                         new PathParameterExtractor('/pets'),
                         $petstoreExpandedOpenApi->paths->getPath('/pets'),
-                        Membrane\OpenAPI\Method::POST
+                        Membrane\OpenAPIReader\Method::POST
                     )
                 ),
             ],
@@ -214,7 +213,7 @@ class CacheOpenAPIProcessorsTest extends TestCase
                     new Specification\OpenAPIRequest(
                         new PathParameterExtractor('/pets/{id}'),
                         $petstoreExpandedOpenApi->paths->getPath('/pets/{id}'),
-                        Membrane\OpenAPI\Method::GET
+                        Membrane\OpenAPIReader\Method::GET
                     )
                 ),
             ],
@@ -253,7 +252,7 @@ class CacheOpenAPIProcessorsTest extends TestCase
                     new Specification\OpenAPIRequest(
                         new PathParameterExtractor('/pets/{id}'),
                         $petstoreExpandedOpenApi->paths->getPath('/pets/{id}'),
-                        Membrane\OpenAPI\Method::DELETE
+                        Membrane\OpenAPIReader\Method::DELETE
                     )
                 ),
             ],

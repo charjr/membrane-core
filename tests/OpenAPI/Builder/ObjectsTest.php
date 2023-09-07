@@ -73,7 +73,8 @@ class ObjectsTest extends TestCase
             ],
             'additionalProperties set to false' => [
                 new Specification\Objects(
-                    '', new Schema([
+                    '',
+                    new Schema([
                         'type' => 'object',
                         'properties' => [
                             'a' => new Schema(['type' => 'integer']),

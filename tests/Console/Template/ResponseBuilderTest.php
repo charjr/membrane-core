@@ -6,8 +6,8 @@ namespace Console\Template;
 
 use cebe\openapi\Reader;
 use Membrane\Console\Template;
-use Membrane\OpenAPI\Method;
 use Membrane\OpenAPI\Specification\Response;
+use Membrane\OpenAPIReader\Method;
 use Membrane\OpenAPIRouter\Router\Collector\RouteCollector;
 use Membrane\OpenAPIRouter\Router\Router;
 use Membrane\OpenAPIRouter\Router\ValueObject\RouteCollection;
@@ -60,13 +60,13 @@ class ResponseBuilderTest extends TestCase
 
         $routeCollection = (new RouteCollector())->collect(Reader::readFromJsonFile($petstoreExpandedFilePath));
         $createdBuilder = eval(
-        sprintf(
-            'return new \\%s\\CachedResponseBuilder(new %s(new %s(%s)));',
-            $namespace,
-            Router::class,
-            RouteCollection::class,
-            var_export($routeCollection->routes, true)
-        )
+            sprintf(
+                'return new \\%s\\CachedResponseBuilder(new %s(new %s(%s)));',
+                $namespace,
+                Router::class,
+                RouteCollection::class,
+                var_export($routeCollection->routes, true)
+            )
         );
 
         self::assertInstanceOf('\ResponseBuilderTemplateTest\Petstore\CachedResponseBuilder', $createdBuilder);
@@ -98,7 +98,7 @@ class ResponseBuilderTest extends TestCase
         Response $responseSpecification
     ): void {
         eval(
-        '
+            '
 
 namespace ResponseBuilderTemplateTest\Petstore\Response\Code200;
 
@@ -140,5 +140,4 @@ class FindPets implements Membrane\Processor
 
         self::assertInstanceOf('\\ResponseBuilderTemplateTest\\Petstore\\Response\\Code200\\FindPets', $processor);
     }
-
 }

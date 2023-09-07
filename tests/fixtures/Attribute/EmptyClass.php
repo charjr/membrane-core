@@ -6,5 +6,4 @@ namespace Membrane\Fixtures\Attribute;
 
 class EmptyClass
 {
-
 }

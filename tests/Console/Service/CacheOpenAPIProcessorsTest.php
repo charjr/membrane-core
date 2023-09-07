@@ -8,17 +8,16 @@ use cebe\openapi\Reader;
 use Membrane;
 use Membrane\Console\Service\CacheOpenAPIProcessors;
 use Membrane\Console\Template;
-use Membrane\OpenAPI\ContentType;
 use Membrane\Filter\{String\AlphaNumeric, String\ToPascalCase, Type as TypeFilter};
 use Membrane\OpenAPI\Builder as Builder;
 use Membrane\OpenAPI\Builder\OpenAPIRequestBuilder;
+use Membrane\OpenAPI\ContentType;
 use Membrane\OpenAPI\Exception\CannotReadOpenAPI;
 use Membrane\OpenAPI\ExtractPathParameters\PathParameterExtractor;
 use Membrane\OpenAPI\Filter\PathMatcher;
-use Membrane\OpenAPI\Method;
 use Membrane\OpenAPI\Processor\Request;
-use Membrane\OpenAPI\Reader\OpenAPIFileReader;
 use Membrane\OpenAPI\Specification;
+use Membrane\OpenAPIReader\Method;
 use Membrane\Processor;
 use Membrane\Validator\{FieldSet as FieldSetValidator, Type as TypeValidator, Utility as UtilityValidator};
 use org\bovigo\vfs\{vfsStream, vfsStreamDirectory};
@@ -31,7 +30,6 @@ use Psr\Log\LoggerInterface;
 #[UsesClass(Template\Processor::class)]
 #[UsesClass(Template\ResponseBuilder::class)]
 #[UsesClass(Template\RequestBuilder::class)]
-#[UsesClass(OpenAPIFileReader::class)]
 #[UsesClass(Builder\APIBuilder::class)]
 #[UsesClass(Builder\Arrays::class)]
 #[UsesClass(Builder\Numeric::class)]

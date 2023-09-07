@@ -9,8 +9,8 @@ use GuzzleHttp\Psr7\Stream;
 use GuzzleHttp\Psr7\UploadedFile;
 use Membrane\Filter\String\JsonDecode;
 use Membrane\OpenAPI\ContentType;
-use Membrane\OpenAPI\Method;
 use Membrane\OpenAPI\Processor\Request;
+use Membrane\OpenAPIReader\Method;
 use Membrane\Processor;
 use Membrane\Processor\Field;
 use Membrane\Result\FieldName;
@@ -178,14 +178,15 @@ class RequestTest extends TestCase
                     'cookie' => $invalidProcessor,
                     'body' => $validProcessor,
                 ],
-                Result::invalid([
+                Result::invalid(
+                    [
                     'request' => ['method' => 'get', 'operationId' => ''],
                     'path' => '',
                     'query' => '',
                     'header' => [],
                     'cookie' => [],
                     'body' => '',
-                ],
+                    ],
                     new MessageSet(new FieldName('', ''), new Message('I always fail', [])),
                     new MessageSet(new FieldName('', ''), new Message('I always fail', []))
                 ),
@@ -346,11 +347,13 @@ class RequestTest extends TestCase
                     ['Content-Type' => 'multipart/x-www-form-urlencoded'],
                     null
                 ))->withParsedBody(['field' => 3])
-                    ->withUploadedFiles(['file' => new UploadedFile(
-                        new Stream(fopen('data://text/plain,filedata', 'r')),
-                        null,
-                        0
-                    )]),
+                    ->withUploadedFiles([
+                        'file' => new UploadedFile(
+                            new Stream(fopen('data://text/plain,filedata', 'r')),
+                            null,
+                            0
+                        ),
+                    ]),
                 [
                     'path' => $validProcessor,
                     'query' => $validProcessor,
