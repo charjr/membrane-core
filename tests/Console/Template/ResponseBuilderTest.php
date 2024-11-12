@@ -98,7 +98,7 @@ class ResponseBuilderTest extends TestCase
         Response $responseSpecification
     ): void {
         eval(
-        '
+            '
 
 namespace ResponseBuilderTemplateTest\Petstore\Response\Code200;
 
@@ -140,5 +140,4 @@ class FindPets implements Membrane\Processor
 
         self::assertInstanceOf('\\ResponseBuilderTemplateTest\\Petstore\\Response\\Code200\\FindPets', $processor);
     }
-
 }

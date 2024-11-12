@@ -41,7 +41,7 @@ class CacheOpenAPIProcessors
     ): bool {
         $this->logger->info("Reading OpenAPI from $openAPIFilePath");
         try {
-            $openAPI = (new Reader([OpenAPIVersion::Version_3_0]))
+            $openAPI = (new Reader([OpenAPIVersion::Version_3_0, OpenAPIVersion::Version_3_1]))
                 ->readFromAbsoluteFilePath($openAPIFilePath);
         } catch (CannotRead | CannotSupport | InvalidOpenAPI $e) {
             $this->logger->error($e->getMessage());
@@ -209,7 +209,12 @@ class CacheOpenAPIProcessors
                 if ($buildRequests) {
                     $this->logger->info('Building Request processor');
                     $processors[$operation->operationId]['request'] = $this->getRequestBuilder()->build(
-                        new OpenAPIRequest(new PathParameterExtractor($pathUrl), $path, $methodObject)
+                        new OpenAPIRequest(
+                            OpenAPIVersion::fromString($openAPI->openapi),
+                            new PathParameterExtractor($pathUrl),
+                            $path,
+                            $methodObject,
+                        )
                     );
                 }
 
@@ -223,7 +228,12 @@ class CacheOpenAPIProcessors
                         }
 
                         $processors[$operation->operationId]['response'][$code] = $this->getResponseBuilder()->build(
-                            new OpenAPIResponse($operation->operationId, (string)$code, $response)
+                            new OpenAPIResponse(
+                                OpenAPIVersion::fromString($openAPI->openapi),
+                                $operation->operationId,
+                                (string)$code,
+                                $response,
+                            )
                         );
                     }
                 }

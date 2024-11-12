@@ -88,7 +88,7 @@ class RequestBuilderTest extends TestCase
         Request $requestSpecification
     ): void {
         eval(
-        '
+            '
 namespace RequestBuilderTemplateTest\Petstore\Request;
 
 use Membrane;
