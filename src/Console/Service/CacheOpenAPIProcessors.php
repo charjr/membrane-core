@@ -22,6 +22,7 @@ use Membrane\OpenAPIReader\Reader;
 use Membrane\Processor;
 use Psr\Log\LoggerInterface;
 
+//TODO replace Reader with MembraneReader once out of builders
 class CacheOpenAPIProcessors
 {
     private OpenAPIRequestBuilder $requestBuilder;
