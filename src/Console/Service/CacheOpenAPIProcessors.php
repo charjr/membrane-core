@@ -6,27 +6,16 @@ namespace Membrane\Console\Service;
 
 use Atto\CodegenTools\ClassDefinition\PHPClassDefinitionProducer;
 use Atto\CodegenTools\CodeGeneration\PHPFilesWriter;
-use Membrane\Console\Template;
-use Membrane\Filter\String\AlphaNumeric;
-use Membrane\Filter\String\ToPascalCase;
-use Membrane\OpenAPI\Builder\{OpenAPIRequestBuilder, OpenAPIResponseBuilder};
-use Membrane\OpenAPI\ExtractPathParameters\PathParameterExtractor;
-use Membrane\OpenAPI\Specification\{OpenAPIRequest, OpenAPIResponse};
 use Membrane\OpenAPIReader\Exception\CannotRead;
 use Membrane\OpenAPIReader\Exception\CannotSupport;
 use Membrane\OpenAPIReader\Exception\InvalidOpenAPI;
 use Membrane\OpenAPIReader\MembraneReader;
 use Membrane\OpenAPIReader\OpenAPIVersion;
-use Membrane\OpenAPIReader\ValueObject\Valid\{V30, V31};
-use Membrane\OpenAPIReader\ValueObject\Valid\Enum\Method;
-use Membrane\Processor;
+use Membrane\OpenAPIReader\ValueObject\Valid\{V31};
 use Psr\Log\LoggerInterface;
 
 class CacheOpenAPIProcessors
 {
-    private OpenAPIRequestBuilder $requestBuilder;
-    private OpenAPIResponseBuilder $responseBuilder;
-
     public function __construct(
         private readonly LoggerInterface $logger,
     ) {
@@ -41,10 +30,8 @@ class CacheOpenAPIProcessors
     ): bool {
         $this->logger->info("Reading OpenAPI from $openAPIFilePath");
         try {
-            $openAPI = (new MembraneReader([
-                OpenAPIVersion::Version_3_0,
-                //OpenAPIVersion::Version_3_1, //TODO support 3.1
-            ]))->readFromAbsoluteFilePath($openAPIFilePath);
+            $openAPI = (new MembraneReader([OpenAPIVersion::Version_3_0, OpenAPIVersion::Version_3_1]))
+                ->readFromAbsoluteFilePath($openAPIFilePath);
         } catch (CannotRead | CannotSupport | InvalidOpenAPI $e) {
             $this->logger->error($e->getMessage());
             return false;
@@ -55,81 +42,18 @@ class CacheOpenAPIProcessors
             return false;
         }
 
-        $processors = $this->buildProcessors($openAPI, $buildRequests, $buildResponses);
+        $yieldsClasses = new YieldsClassDefinitions($this->logger);
+
+        $definitionProducer = new PHPClassDefinitionProducer($yieldsClasses(
+            $openAPI,
+            $cacheNamespace,
+            $buildRequests,
+            $buildResponses,
+        ));
 
         $destination = rtrim($cacheDestinationFilePath, '/');
-
-        // Initialize classMap for CachedBuilers
-        $classMap = $classNames = [];
-        $classDefinitions = [];
-
-        foreach ($processors as $operationId => $operation) {
-            $classNames[$operationId] = $this->createSuitableClassName($operationId, $classNames);
-            $className = $classNames[$operationId];
-
-            if (isset($operation['request'])) {
-                $classMap[$operationId]['request'] = sprintf('%s\Request\%s', $cacheNamespace, $className);
-
-                $this->logger->info("Caching $operationId Request at $destination/Request/$className.php");
-                $classDefinitions[] = new Template\Processor(
-                    "$cacheNamespace\\Request",
-                    $className,
-                    $operation['request']
-                );
-            }
-
-            if (isset($operation['response'])) {
-                $classMap[$operationId]['response'] = [];
-                foreach ($operation['response'] as $code => $response) {
-                    $prefixedCode = 'Code' . ucfirst((string)$code);
-                    $classMap[$operationId]['response'][(string)$code] =
-                        sprintf('%s\Response\%s\%s', $cacheNamespace, $prefixedCode, $className);
-
-                    $this->logger->info(
-                        "Caching $operationId $code Response at $destination/Response/$prefixedCode/$className.php"
-                    );
-
-                    $classDefinitions[] = new Template\Processor(
-                        "$cacheNamespace\\Response\\$prefixedCode",
-                        $className,
-                        $response
-                    );
-                }
-            }
-        }
-
-        $this->logger->info('Processors cached successfully');
-
-        if ($buildRequests) {
-            $this->logger->info('Building CachedRequestBuilder');
-
-            $classDefinitions[] = new Template\RequestBuilder(
-                $cacheNamespace,
-                $openAPIFilePath,
-                array_map(fn($p) => $p['request'], $classMap)
-            );
-        }
-
-        if ($buildResponses) {
-            $this->logger->info('Building CachedResponseBuilder');
-
-            $classDefinitions[] = new Template\ResponseBuilder(
-                $cacheNamespace,
-                $openAPIFilePath,
-                array_filter(array_map(fn($p) => $p['response'] ?? null, $classMap))
-            );
-        }
-
-        $definitionProducer = new PHPClassDefinitionProducer((function () use ($classDefinitions) {
-            yield from $classDefinitions;
-        })());
-
-        try {
-            $classWriter = new PHPFilesWriter($destination, $cacheNamespace);
-            $classWriter->writeFiles($definitionProducer);
-        } catch (\RuntimeException) {
-            return false;
-        }
+        $classWriter = new PHPFilesWriter($destination, $cacheNamespace);
+        $classWriter->writeFiles($definitionProducer);
 
         return true;
     }
@@ -147,6 +71,7 @@ class CacheOpenAPIProcessors
         $this->logger->error("Cannot write to $destination");
         return false;
     }
+<<<<<<< HEAD
 
     /** @param array<string,string> $existingClassNames */
     private function createSuitableClassName(string $nameToConvert, array $existingClassNames): string
@@ -240,4 +165,6 @@ class CacheOpenAPIProcessors
         }
         return $processors;
     }
+=======
+>>>>>>> 4331571 (Extract service to generate template Processors)
 }
