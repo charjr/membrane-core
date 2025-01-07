@@ -17,8 +17,8 @@ use Membrane\OpenAPIReader\Exception\CannotSupport;
 use Membrane\OpenAPIReader\Exception\InvalidOpenAPI;
 use Membrane\OpenAPIReader\MembraneReader;
 use Membrane\OpenAPIReader\OpenAPIVersion;
-use Membrane\OpenAPIReader\ValueObject\Valid\Enum\Method;
 use Membrane\OpenAPIReader\ValueObject\Valid\{V30, V31};
+use Membrane\OpenAPIReader\ValueObject\Valid\Enum\Method;
 use Membrane\Processor;
 use Psr\Log\LoggerInterface;
 
@@ -201,11 +201,6 @@ class CacheOpenAPIProcessors
         bool $buildRequests,
         bool $buildResponses,
     ): array {
-        $version = match ($openAPI::class) {
-            V30\OpenAPI::class => OpenAPIVersion::Version_3_0,
-            V31\OpenAPI::class => OpenAPIVersion::Version_3_1,
-        };
-
         $processors = [];
         foreach ($openAPI->paths as $pathUrl => $path) {
             $this->logger->info("Building Processors for $pathUrl");
@@ -220,7 +215,6 @@ class CacheOpenAPIProcessors
                     $this->logger->info('Building Request processor');
                     $processors[$operation->operationId]['request'] = $this->getRequestBuilder()->build(
                         new OpenAPIRequest(
-                            $version,
                             new PathParameterExtractor($pathUrl),
                             $path,
                             $methodObject,
@@ -235,7 +229,6 @@ class CacheOpenAPIProcessors
 
                         $processors[$operation->operationId]['response'][$code] = $this->getResponseBuilder()->build(
                             new OpenAPIResponse(
-                                $version,
                                 $operation->operationId,
                                 (string)$code,
                                 $response,
