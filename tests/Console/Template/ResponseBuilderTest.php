@@ -4,10 +4,11 @@ declare(strict_types=1);
 
 namespace Membrane\Tests\Console\Template;
 
-use cebe\openapi\Reader;
 use Membrane\Console\Template;
 use Membrane\OpenAPI\Specification\Response;
-use Membrane\OpenAPIReader\Method;
+use Membrane\OpenAPIReader\MembraneReader;
+use Membrane\OpenAPIReader\OpenAPIVersion;
+use Membrane\OpenAPIReader\ValueObject\Valid\Enum\Method;
 use Membrane\OpenAPIRouter\RouteCollection;
 use Membrane\OpenAPIRouter\RouteCollector;
 use Membrane\OpenAPIRouter\Router;
@@ -24,13 +25,7 @@ use PHPUnit\Framework\TestCase;
 #[UsesClass(Field::class)]
 class ResponseBuilderTest extends TestCase
 {
-    private Template\ResponseBuilder $sut;
     private $petstoreAPIPath = __DIR__ . '/../../fixtures/OpenAPI/docs/petstore-expanded.json';
-
-    protected function setUp(): void
-    {
-        $this->sut = new Template\ResponseBuilder();
-    }
 
     #[Test, TestDox('createFromTemplate will return a string of PHP code that can evaluate to a CachedResponseBuilder')]
     public function createFromTemplateReturnsPHPString(): \ResponseBuilderTemplateTest\Petstore\CachedResponseBuilder
@@ -55,18 +50,22 @@ class ResponseBuilderTest extends TestCase
             ],
         ];
 
-        $phpString = $this->sut->createFromTemplate($namespace, $petstoreExpandedFilePath, $map);
+        $sut = new Template\ResponseBuilder($namespace, $petstoreExpandedFilePath, $map);
+        $phpString = $sut->getCode();
         eval('//' . $phpString);
 
-        $routeCollection = (new RouteCollector())->collect(Reader::readFromJsonFile($petstoreExpandedFilePath));
+        $openAPI = (new MembraneReader([OpenAPIVersion::Version_3_0]))
+            ->readFromAbsoluteFilePath($petstoreExpandedFilePath);
+
+        $routeCollection = (new RouteCollector())->collect($openAPI);
         $createdBuilder = eval(
-        sprintf(
-            'return new \\%s\\CachedResponseBuilder(new %s(new %s(%s)));',
-            $namespace,
-            Router::class,
-            RouteCollection::class,
-            var_export($routeCollection->routes, true)
-        )
+            sprintf(
+                'return new \\%s\\CachedResponseBuilder(new %s(new %s(%s)));',
+                $namespace,
+                Router::class,
+                RouteCollection::class,
+                var_export($routeCollection->routes, true)
+            )
         );
 
         self::assertInstanceOf('\ResponseBuilderTemplateTest\Petstore\CachedResponseBuilder', $createdBuilder);
@@ -81,7 +80,7 @@ class ResponseBuilderTest extends TestCase
     ): Response {
         $responseSpecification = new Response(
             $this->petstoreAPIPath,
-            'http://petstore.swagger.io/api/pets',
+            'https://petstore.swagger.io/v2/pets',
             Method::GET,
             '200'
         );
@@ -98,7 +97,7 @@ class ResponseBuilderTest extends TestCase
         Response $responseSpecification
     ): void {
         eval(
-        '
+            '
 
 namespace ResponseBuilderTemplateTest\Petstore\Response\Code200;
 
@@ -140,5 +139,4 @@ class FindPets implements Membrane\Processor
 
         self::assertInstanceOf('\\ResponseBuilderTemplateTest\\Petstore\\Response\\Code200\\FindPets', $processor);
     }
-
 }

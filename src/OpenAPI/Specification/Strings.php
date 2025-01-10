@@ -4,8 +4,9 @@ declare(strict_types=1);
 
 namespace Membrane\OpenAPI\Specification;
 
-use cebe\openapi\spec\Schema;
 use Membrane\OpenAPI\Exception\CannotProcessSpecification;
+use Membrane\OpenAPIReader\Factory;
+use Membrane\OpenAPIReader\ValueObject\Valid\{Enum\Type, V30, V31};
 
 class Strings extends APISchema
 {
@@ -13,16 +14,23 @@ class Strings extends APISchema
     public readonly int $minLength;
     public readonly ?string $pattern;
 
-    public function __construct(string $fieldName, Schema $schema)
-    {
-        if ($schema->type !== 'string') {
-            throw CannotProcessSpecification::mismatchedType(self::class, 'string', $schema->type);
+    public function __construct(
+        string $fieldName,
+        V30\Keywords | V31\Keywords $keywords,
+        public readonly bool $convertFromArray = false,
+        public readonly ?string $style = null,
+    ) {
+        if (!in_array(Type::String, $keywords->types)) {
+            throw CannotProcessSpecification::mismatchedType(
+                ['string'],
+                array_map(fn($t) => $t->value, $keywords->types),
+            );
         }
 
-        $this->maxLength = $schema->maxLength;
-        $this->minLength = $schema->minLength ?? 0;
-        $this->pattern = $schema->pattern;
+        $this->maxLength = $keywords->maxLength;
+        $this->minLength = $keywords->minLength;
+        $this->pattern = $keywords->pattern;
 
-        parent::__construct($fieldName, $schema);
+        parent::__construct($fieldName, $keywords);
     }
 }

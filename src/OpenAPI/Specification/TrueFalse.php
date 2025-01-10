@@ -4,17 +4,26 @@ declare(strict_types=1);
 
 namespace Membrane\OpenAPI\Specification;
 
-use cebe\openapi\spec\Schema;
 use Membrane\OpenAPI\Exception\CannotProcessSpecification;
+use Membrane\OpenAPIReader\ValueObject\Valid\{V30, V31};
+use Membrane\OpenAPIReader\ValueObject\Valid\Enum\Type;
 
 class TrueFalse extends APISchema
 {
-    public function __construct(string $fieldName, Schema $schema, public readonly bool $convertFromString = false)
-    {
-        if ($schema->type !== 'boolean') {
-            throw CannotProcessSpecification::mismatchedType(self::class, 'boolean', $schema->type);
+    public function __construct(
+        string $fieldName,
+        V30\Keywords | V31\Keywords $keywords,
+        public readonly bool $convertFromString = false,
+        public readonly bool $convertFromArray = false,
+        public readonly ?string $style = null,
+    ) {
+        if (!in_array(Type::Boolean, $keywords->types)) {
+            throw CannotProcessSpecification::mismatchedType(
+                ['boolean'],
+                array_map(fn($t) => $t->value, $keywords->types),
+            );
         }
 
-        parent::__construct($fieldName, $schema);
+        parent::__construct($fieldName, $keywords);
     }
 }

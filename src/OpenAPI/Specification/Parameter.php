@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Membrane\OpenAPI\Specification;
 
-use cebe\openapi\spec as Cebe;
 use Membrane\Builder\Specification;
 use Membrane\OpenAPI\Exception\CannotProcessOpenAPI;
+use Membrane\OpenAPIReader\ValueObject\Valid\{V30, V31};
 
 class Parameter implements Specification
 {
@@ -15,68 +15,22 @@ class Parameter implements Specification
     public readonly bool $required;
     public readonly string $style;
     public readonly bool $explode;
-    public readonly Cebe\Schema $schema;
+    public readonly V30\Schema | V31\Schema $schema;
 
-    public function __construct(
-        Cebe\Parameter $parameter
-    ) {
+    public function __construct(V30\Parameter | V31\Parameter $parameter)
+    {
         $this->name = $parameter->name;
-        $this->in = $parameter->in;
-        $this->style = $parameter->style;
-
-        switch ($this->style) {
-            case 'matrix':
-            case 'label':
-                if ($this->in !== 'path') {
-                    throw CannotProcessOpenAPI::invalidStyleLocation($this->name, $this->style, $this->in);
-                }
-                break;
-            case 'form':
-                if (!in_array($this->in, ['query', 'cookie'])) {
-                    throw CannotProcessOpenAPI::invalidStyleLocation($this->name, $this->style, $this->in);
-                }
-                break;
-            case 'simple':
-                if (!in_array($this->in, ['path', 'header'])) {
-                    throw CannotProcessOpenAPI::invalidStyleLocation($this->name, $this->style, $this->in);
-                }
-                break;
-            case 'spaceDelimited':
-            case 'pipeDelimited':
-            case 'deepObject':
-                if ($this->in !== 'query') {
-                    throw CannotProcessOpenAPI::invalidStyleLocation($this->name, $this->style, $this->in);
-                }
-                break;
-        }
-
+        $this->in = $parameter->in->value;
+        $this->style = $parameter->style->value;
         $this->explode = $parameter->explode;
-        $this->schema = $this->findSchema($parameter);
 
-        if ($this->explode === true && in_array($this->schema->type, ['array', 'object'])) {
-            throw CannotProcessOpenAPI::unsupportedStyle($this->name, $this->style);
+        if ($parameter->hasMediaType() && $parameter->getMediaType() !== 'application/json') {
+            assert($parameter->getMediaType() !== null);
+            throw CannotProcessOpenAPI::unsupportedMediaTypes($parameter->getMediaType());
         }
+
+        $this->schema = $parameter->getSchema();
 
         $this->required = $parameter->required;
-    }
-
-    private function findSchema(Cebe\Parameter $parameter): Cebe\Schema
-    {
-        $schemaLocations = null;
-
-        if ($parameter->schema !== null) {
-            $schemaLocations = $parameter->schema;
-        }
-
-        if ($parameter->content !== []) {
-            $schemaLocations = $parameter->content['application/json']?->schema
-                ??
-                throw CannotProcessOpenAPI::unsupportedMediaTypes(...array_keys($parameter->content));
-        }
-
-        // Cebe library already validates that parameters MUST have either a schema or content but not both.
-        assert($schemaLocations instanceof Cebe\Schema);
-
-        return $schemaLocations;
     }
 }

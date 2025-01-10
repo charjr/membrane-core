@@ -6,35 +6,42 @@ namespace Membrane\Tests\OpenAPI\Builder;
 
 use GuzzleHttp\Psr7\ServerRequest;
 use Membrane\Builder\Specification;
+use Membrane\Filter\String\Explode;
+use Membrane\Filter\String\Implode;
 use Membrane\Filter\Type\ToInt;
 use Membrane\OpenAPI\Builder\APIBuilder;
 use Membrane\OpenAPI\Builder\Arrays;
 use Membrane\OpenAPI\Builder\Numeric;
 use Membrane\OpenAPI\Builder\OpenAPIRequestBuilder;
+use Membrane\OpenAPI\Builder\ParameterBuilder;
 use Membrane\OpenAPI\Builder\RequestBuilder;
 use Membrane\OpenAPI\Builder\Strings;
 use Membrane\OpenAPI\ContentType;
 use Membrane\OpenAPI\Exception\CannotProcessOpenAPI;
 use Membrane\OpenAPI\Exception\CannotProcessSpecification;
 use Membrane\OpenAPI\ExtractPathParameters\PathMatcher as PathMatcherClass;
-use Membrane\OpenAPI\Filter\HTTPParameters;
+use Membrane\OpenAPI\Filter\FormatStyle\Form;
 use Membrane\OpenAPI\Filter\PathMatcher;
+use Membrane\OpenAPI\Filter\QueryStringToArray;
 use Membrane\OpenAPI\Processor\Request as RequestProcessor;
 use Membrane\OpenAPI\Specification\APISchema;
 use Membrane\OpenAPI\Specification\OpenAPIRequest;
+use Membrane\OpenAPI\Specification\Parameter;
 use Membrane\OpenAPI\Specification\Request;
-use Membrane\OpenAPIReader\Method;
 use Membrane\OpenAPIReader\OpenAPIVersion;
 use Membrane\OpenAPIReader\Reader;
+use Membrane\OpenAPIReader\ValueObject\Valid\Enum\Method;
 use Membrane\Processor;
 use Membrane\Processor\BeforeSet;
 use Membrane\Processor\Collection;
 use Membrane\Processor\Field;
 use Membrane\Processor\FieldSet;
+use Membrane\Renderer\HumanReadable;
 use Membrane\Result\FieldName;
 use Membrane\Result\Message;
 use Membrane\Result\MessageSet;
 use Membrane\Result\Result;
+use Membrane\Tests\MembraneTestCase;
 use Membrane\Validator\FieldSet\RequiredFields;
 use Membrane\Validator\Numeric\Maximum;
 use Membrane\Validator\String\IntString;
@@ -48,12 +55,12 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestDox;
 use PHPUnit\Framework\Attributes\UsesClass;
-use PHPUnit\Framework\TestCase;
 use Psr\Http\Message\ServerRequestInterface;
 
 #[CoversClass(RequestBuilder::class)]
 #[CoversClass(CannotProcessSpecification::class)]
 #[CoversClass(CannotProcessOpenAPI::class)]
+#[UsesClass(HumanReadable::class)]
 #[UsesClass(APIBuilder::class)]
 #[UsesClass(OpenAPIRequestBuilder::class)]
 #[UsesClass(OpenAPIRequest::class)]
@@ -61,7 +68,11 @@ use Psr\Http\Message\ServerRequestInterface;
 #[UsesClass(Arrays::class)]
 #[UsesClass(Numeric::class)]
 #[UsesClass(Strings::class)]
-#[UsesClass(HTTPParameters::class)]
+#[UsesClass(Parameter::class)]
+#[UsesClass(ParameterBuilder::class)]
+#[UsesClass(ParameterBuilder::class)]
+#[UsesClass(QueryStringToArray::class)]
+#[UsesClass(Form::class)]
 #[UsesClass(PathMatcher::class)]
 #[UsesClass(PathMatcherClass::class)]
 #[UsesClass(RequestProcessor::class)]
@@ -69,8 +80,11 @@ use Psr\Http\Message\ServerRequestInterface;
 #[UsesClass(\Membrane\OpenAPI\Specification\Arrays::class)]
 #[UsesClass(\Membrane\OpenAPI\Specification\Numeric::class)]
 #[UsesClass(\Membrane\OpenAPI\Specification\Strings::class)]
+#[UsesClass(Parameter::class)]
 #[UsesClass(Request::class)]
 #[UsesClass(ToInt::class)]
+#[UsesClass(Explode::class)]
+#[UsesClass(Implode::class)]
 #[UsesClass(BeforeSet::class)]
 #[UsesClass(Collection::class)]
 #[UsesClass(Field::class)]
@@ -82,11 +96,14 @@ use Psr\Http\Message\ServerRequestInterface;
 #[UsesClass(RequiredFields::class)]
 #[UsesClass(Maximum::class)]
 #[UsesClass(IsInt::class)]
+#[UsesClass(IntString::class)]
 #[UsesClass(IsList::class)]
 #[UsesClass(IsString::class)]
 #[UsesClass(Passes::class)]
+#[UsesClass(IntString::class)]
+#[UsesClass(Explode::class)]
 #[UsesClass(ContentType::class)]
-class RequestBuilderTest extends TestCase
+class RequestBuilderTest extends MembraneTestCase
 {
     public const DIR = __DIR__ . '/../../fixtures/OpenAPI/';
 
@@ -131,7 +148,9 @@ class RequestBuilderTest extends TestCase
         self::expectExceptionObject(CannotProcessSpecification::pathNotFound('noReferences.json', '/nonexistentpath'));
 
         $specification = new Request(
-            self::DIR . 'noReferences.json', 'http://www.test.com/nonexistentpath', Method::GET
+            self::DIR . 'noReferences.json',
+            'http://www.test.com/nonexistentpath',
+            Method::GET
         );
 
         (new RequestBuilder())->build($specification);
@@ -157,12 +176,11 @@ class RequestBuilderTest extends TestCase
                                 new PathMatcher(new PathMatcherClass('http://www.test.com/path', '/path'))
                             )
                         ),
-                        'query' => new FieldSet('query', new BeforeSet(new HTTPParameters())),
+                        'query' => new FieldSet('query', new BeforeSet(new QueryStringToArray([]))),
                         'header' => new FieldSet('header'),
                         'cookie' => new FieldSet('cookie'),
                         'body' => new Field('requestBody', new Passes()),
                     ]
-
                 ),
             ],
             'Request: path param in path, no operation params, no requestBody' => [
@@ -184,12 +202,11 @@ class RequestBuilderTest extends TestCase
                             ),
                             new Field('id', new IntString(), new ToInt())
                         ),
-                        'query' => new FieldSet('query', new BeforeSet(new HTTPParameters())),
+                        'query' => new FieldSet('query', new BeforeSet(new QueryStringToArray([]))),
                         'header' => new FieldSet('header'),
                         'cookie' => new FieldSet('cookie'),
                         'body' => new Field('requestBody', new Passes()),
                     ]
-
                 ),
             ],
             'Request: path param in path, operation param in query not required, no requestBody' => [
@@ -213,8 +230,8 @@ class RequestBuilderTest extends TestCase
                         ),
                         'query' => new FieldSet(
                             'query',
-                            new BeforeSet(new HTTPParameters()),
-                            new Field('age', new IntString(), new ToInt())
+                            new BeforeSet(new QueryStringToArray(['age' => ['style' => 'form' , 'explode' => true]])),
+                            new Field('age', new Form('integer', false), new IntString(), new ToInt())
                         ),
                         'header' => new FieldSet('header'),
                         'cookie' => new FieldSet('cookie'),
@@ -243,14 +260,18 @@ class RequestBuilderTest extends TestCase
                         ),
                         'query' => new FieldSet(
                             'query',
-                            new BeforeSet(new HTTPParameters(), new RequiredFields('name')),
-                            new Field('name', new IsString())
+                            new BeforeSet(
+                                new QueryStringToArray(
+                                    ['name' => ['style' => 'form' , 'explode' => true]]
+                                ),
+                                new RequiredFields('name')
+                            ),
+                            new Field('name', new Form('string', false), new IsString())
                         ),
                         'header' => new FieldSet('header'),
                         'cookie' => new FieldSet('cookie'),
                         'body' => new Field('requestBody', new Passes()),
                     ]
-
                 ),
             ],
             'Request: path param in path, operation param in query with json content, required, no requestBody' => [
@@ -274,8 +295,11 @@ class RequestBuilderTest extends TestCase
                         ),
                         'query' => new FieldSet(
                             'query',
-                            new BeforeSet(new HTTPParameters(), new RequiredFields('name')),
-                            new Field('name', new IsString())
+                            new BeforeSet(
+                                new QueryStringToArray(['name' => ['style' => 'form', 'explode' => true]]),
+                                new RequiredFields('name')
+                            ),
+                            new Field('name', new Form('string', false), new IsString())
                         ),
                         'header' => new FieldSet('header'),
                         'cookie' => new FieldSet('cookie'),
@@ -300,12 +324,16 @@ class RequestBuilderTest extends TestCase
                                 new PathMatcher(new PathMatcherClass('http://www.test.com', '/requestpathtwo'))
                             )
                         ),
-                        'query' => new FieldSet('query', new BeforeSet(new HTTPParameters())),
-                        'header' => new FieldSet('header', new Field('id', new IntString(), new ToInt())),
+                        'query' => new FieldSet('query', new BeforeSet(new QueryStringToArray([]))),
+                        'header' => new FieldSet('header', new Field(
+                            'id',
+                            new Implode(','),
+                            new IntString(),
+                            new ToInt()
+                        )),
                         'cookie' => new FieldSet('cookie'),
                         'body' => new Field('requestBody', new Passes()),
                     ]
-
                 ),
             ],
             'Request: path param in header, operation param in cookie, no requestBody' => [
@@ -321,12 +349,15 @@ class RequestBuilderTest extends TestCase
                                 new PathMatcher(new PathMatcherClass('http://www.test.com', '/requestpathtwo'))
                             )
                         ),
-                        'query' => new FieldSet('query', new BeforeSet(new HTTPParameters())),
-                        'header' => new FieldSet('header', new Field('id', new IntString(), new ToInt())),
-                        'cookie' => new FieldSet('cookie', new Field('name', new IsString())),
+                        'query' => new FieldSet('query', new BeforeSet(new QueryStringToArray([]))),
+                        'header' => new FieldSet('header', new Field('id', new Implode(','), new IntString(), new ToInt())),
+                        'cookie' => new FieldSet('cookie', new Field(
+                            'name',
+                            new Form('string', false),
+                            new IsString()
+                        )),
                         'body' => new Field('requestBody', new Passes()),
                     ]
-
                 ),
             ],
             'Request: identical param in header and query, no requestBody' => [
@@ -348,14 +379,16 @@ class RequestBuilderTest extends TestCase
                         ),
                         'query' => new FieldSet(
                             'query',
-                            new BeforeSet(new HTTPParameters()),
-                            new Field('id', new IntString(), new ToInt())
+                            new BeforeSet(new QueryStringToArray(['id' => ['style' => 'form' , 'explode' => true]])),
+                            new Field('id', new Form('integer', false), new IntString(), new ToInt())
                         ),
-                        'header' => new FieldSet('header'),
+                        'header' => new FieldSet(
+                            'header',
+                            new Field('id', new Implode(','), new IntString(), new ToInt())
+                        ),
                         'cookie' => new FieldSet('cookie'),
                         'body' => new Field('requestBody', new Passes()),
                     ]
-
                 ),
             ],
             'Request: same param in path and operation with different types, no requestBody' => [
@@ -375,12 +408,11 @@ class RequestBuilderTest extends TestCase
                                 new PathMatcher(new PathMatcherClass('http://www.test.com', '/requestpathtwo'))
                             )
                         ),
-                        'query' => new FieldSet('query', new BeforeSet(new HTTPParameters())),
-                        'header' => new FieldSet('header', new Field('id', new IsString())),
+                        'query' => new FieldSet('query', new BeforeSet(new QueryStringToArray([]))),
+                        'header' => new FieldSet('header', new Field('id', new Implode(','), new IsString())),
                         'cookie' => new FieldSet('cookie'),
                         'body' => new Field('requestBody', new Passes()),
                     ]
-
                 ),
             ],
             'Request: requestBody param' => [
@@ -400,12 +432,11 @@ class RequestBuilderTest extends TestCase
                                 new PathMatcher(new PathMatcherClass('http://www.test.com', '/requestbodypath'))
                             )
                         ),
-                        'query' => new FieldSet('query', new BeforeSet(new HTTPParameters())),
+                        'query' => new FieldSet('query', new BeforeSet(new QueryStringToArray([]))),
                         'header' => new FieldSet('header'),
                         'cookie' => new FieldSet('cookie'),
                         'body' => new Field('requestBody', new IsInt()),
                     ]
-
                 ),
             ],
             'Request: operation param in query, requestBody param' => [
@@ -427,14 +458,13 @@ class RequestBuilderTest extends TestCase
                         ),
                         'query' => new FieldSet(
                             'query',
-                            new BeforeSet(new HTTPParameters()),
-                            new Field('id', new IsString())
+                            new BeforeSet(new QueryStringToArray(['id' => ['style' => 'form' , 'explode' => true]])),
+                            new Field('id', new Form('string', false), new IsString())
                         ),
                         'header' => new FieldSet('header'),
                         'cookie' => new FieldSet('cookie'),
                         'body' => new Field('requestBody', new IsInt()),
                     ]
-
                 ),
             ],
             'Request: path param in path, operation param in query, header, cookie, requestBody param' => [
@@ -458,11 +488,15 @@ class RequestBuilderTest extends TestCase
                         ),
                         'query' => new FieldSet(
                             'query',
-                            new BeforeSet(new HTTPParameters()),
-                            new Field('name', new IsString())
+                            new BeforeSet(new QueryStringToArray(['name' => ['style' => 'form', 'explode' => true]])),
+                            new Field('name', new Form('string', false), new IsString())
                         ),
-                        'header' => new FieldSet('header', new Field('species', new IsString())),
-                        'cookie' => new FieldSet('cookie', new Field('subspecies', new IsString())),
+                        'header' => new FieldSet('header', new Field('species', new Implode(','), new IsString())),
+                        'cookie' => new FieldSet('cookie', new Field(
+                            'subspecies',
+                            new Form('string', false),
+                            new IsString()
+                        )),
                         'body' => new Field('requestBody', new IsFloat()),
                     ]
                 ),
@@ -496,7 +530,7 @@ class RequestBuilderTest extends TestCase
                         'request' => ['method' => 'get', 'operationId' => 'listPets'],
                         'path' => [],
                         'query' => [],
-                        'header' => [],
+                        'header' => ['Host' => ['petstore.swagger.io']],
                         'cookie' => [],
                         'body' => '',
                     ],
@@ -510,7 +544,7 @@ class RequestBuilderTest extends TestCase
                         'request' => ['method' => 'get', 'operationId' => 'showPetById'],
                         'path' => ['petId' => 'Harley'],
                         'query' => [],
-                        'header' => [],
+                        'header' => ['Host' => ['petstore.swagger.io']],
                         'cookie' => [],
                         'body' => '',
                     ],
@@ -519,16 +553,16 @@ class RequestBuilderTest extends TestCase
             'petstore expanded /pets get (invalid)' => [
                 new Request(
                     $expanded,
-                    'http://petstore.swagger.io/api/pets',
+                    'https://petstore.swagger.io/v2/pets',
                     Method::GET
                 ),
-                new ServerRequest('get', 'http://petstore.swagger.io/api/pets?limit=five'),
+                new ServerRequest('get', 'https://petstore.swagger.io/v2/pets?limit=five'),
                 Result::invalid(
                     [
                         'request' => ['method' => 'get', 'operationId' => 'findPets'],
                         'path' => [],
                         'query' => ['limit' => 'five'],
-                        'header' => [],
+                        'header' => ['Host' => ['petstore.swagger.io']],
                         'cookie' => [],
                         'body' => '',
                     ],
@@ -541,16 +575,16 @@ class RequestBuilderTest extends TestCase
             'petstore expanded /pets get, minimal (valid)' => [
                 new Request(
                     $expanded,
-                    'http://petstore.swagger.io/api/pets',
+                    'https://petstore.swagger.io/v2/pets',
                     Method::GET
                 ),
-                new ServerRequest('get', 'http://petstore.swagger.io/api/pets?limit=5&tags=cat,tabby'),
+                new ServerRequest('get', 'https://petstore.swagger.io/v2/pets?limit=5&tags=cat,tabby'),
                 Result::valid(
                     [
                         'request' => ['method' => 'get', 'operationId' => 'findPets'],
                         'path' => [],
                         'query' => ['limit' => 5, 'tags' => ['cat', 'tabby']],
-                        'header' => [],
+                        'header' => ['Host' => ['petstore.swagger.io']],
                         'cookie' => [],
                         'body' => '',
                     ]
@@ -572,7 +606,7 @@ class RequestBuilderTest extends TestCase
 
         $actual = $processor->process(new FieldName(''), $serverRequest);
 
-        self::assertEquals($expected, $actual);
+        self::assertResultEquals($expected, $actual);
         self::assertSame($expected->value, $actual->value);
     }
 }

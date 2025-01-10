@@ -24,7 +24,7 @@ use Membrane\OpenAPI\Specification\OpenAPIResponse;
 use Membrane\OpenAPI\Specification\Response;
 use Membrane\OpenAPI\Specification\Strings;
 use Membrane\OpenAPI\Specification\TrueFalse;
-use Membrane\OpenAPIReader\Method;
+use Membrane\OpenAPIReader\ValueObject\Valid\Enum\Method;
 use Membrane\Processor;
 use Membrane\Processor\BeforeSet;
 use Membrane\Processor\Collection;
@@ -55,7 +55,6 @@ use Membrane\Validator\Type\IsString;
 use Membrane\Validator\Utility\Passes;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\Attributes\DataProviderExternal;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\Attributes\TestDox;
 use PHPUnit\Framework\Attributes\UsesClass;
@@ -106,6 +105,7 @@ use PHPUnit\Framework\TestCase;
 #[UsesClass(IsInt::class)]
 #[UsesClass(IsList::class)]
 #[UsesClass(IsString::class)]
+#[UsesClass(\Membrane\Validator\Utility\AnyOf::class)]
 class ResponseBuilderTest extends TestCase
 {
     public const DIR = __DIR__ . '/../../fixtures/OpenAPI/';
@@ -132,7 +132,7 @@ class ResponseBuilderTest extends TestCase
         $petstoreAPIFilePath = __DIR__ . '/../../fixtures/OpenAPI/docs/petstore-expanded.json';
         $specification = new Response(
             $petstoreAPIFilePath,
-            'http://petstore.swagger.io/api/pets',
+            'https://petstore.swagger.io/v2/pets',
             Method::DELETE,
             '200'
         );
@@ -212,7 +212,7 @@ class ResponseBuilderTest extends TestCase
                     Method::GET,
                     '201'
                 ),
-                new AnyOf('', new Field('', new IsNull()), new Field('', new IsInt())),
+                new AnyOf('', new Field('', new IsInt()), new Field('', new IsNull())),
             ],
             'int, inclusive min' => [
                 new Response(self::DIR . 'noReferences.json', '/responsepath', Method::GET, '202'),
@@ -272,7 +272,6 @@ class ResponseBuilderTest extends TestCase
                 ),
                 new AnyOf(
                     '',
-                    new Field('', new IsNull()),
                     new Field(
                         '',
                         new IsInt(),
@@ -280,7 +279,8 @@ class ResponseBuilderTest extends TestCase
                         new Maximum(100),
                         new Minimum(0, true),
                         new MultipleOf(3)
-                    )
+                    ),
+                    new Field('', new IsNull())
                 ),
             ],
             'number' => [
@@ -299,7 +299,7 @@ class ResponseBuilderTest extends TestCase
                     Method::GET,
                     '211',
                 ),
-                new AnyOf('', new Field('', new IsNull()), new Field('', new IsNumber())),
+                new AnyOf('', new Field('', new IsNumber()), new Field('', new IsNull())),
             ],
             'number, enum' => [
                 new Response(
@@ -321,7 +321,7 @@ class ResponseBuilderTest extends TestCase
             ],
             'nullable number, float format' => [
                 new Response(self::DIR . 'noReferences.json', '/responsepath', Method::GET, '214'),
-                new AnyOf('', new Field('', new IsNull()), new Field('', new IsFloat())),
+                new AnyOf('', new Field('', new IsFloat()), new Field('', new IsNull())),
             ],
             'number, double format' => [
                 new Response(
@@ -340,15 +340,16 @@ class ResponseBuilderTest extends TestCase
                     '219'
                 ),
                 new AnyOf(
-                    '', new Field('', new IsNull()), new Field(
+                    '',
+                    new Field(
                         '',
                         new IsNumber(),
                         new Contained([1, 2.3, 4]),
                         new Maximum(99.99, true),
                         new Minimum(6.66),
                         new MultipleOf(3.33)
-
-                    )
+                    ),
+                    new Field('', new IsNull())
                 ),
             ],
             'string' => [
@@ -357,7 +358,7 @@ class ResponseBuilderTest extends TestCase
             ],
             'nullable string' => [
                 new Response(self::DIR . 'noReferences.json', '/responsepath', Method::GET, '221'),
-                new AnyOf('', new Field('', new IsNull()), new Field('', new IsString())),
+                new AnyOf('', new Field('', new IsString()), new Field('', new IsNull())),
             ],
             'string, enum' => [
                 new Response(
@@ -410,14 +411,14 @@ class ResponseBuilderTest extends TestCase
                 new Response(self::DIR . 'noReferences.json', '/responsepath', Method::GET, '229'),
                 new AnyOf(
                     '',
-                    new Field('', new IsNull()),
                     new Field(
                         '',
                         new IsString(),
                         new Contained(['a', 'b', 'c']),
                         new Length(5, 10),
                         new Regex('#[A-Za-z]+#u')
-                    )
+                    ),
+                    new Field('', new IsNull())
                 ),
             ],
             'bool' => [
@@ -436,7 +437,7 @@ class ResponseBuilderTest extends TestCase
                     Method::GET,
                     '231'
                 ),
-                new AnyOf('', new Field('', new IsNull()), new Field('', new IsBool())),
+                new AnyOf('', new Field('', new IsBool()), new Field('', new IsNull())),
             ],
             'bool, enum' => [
                 new Response(self::DIR . 'noReferences.json', '/responsepath', Method::GET, '232'),
@@ -451,8 +452,8 @@ class ResponseBuilderTest extends TestCase
                 ),
                 new AnyOf(
                     '',
-                    new Field('', new IsNull()),
-                    new Field('', new IsBool(), new Contained([true, null]))
+                    new Field('', new IsBool(), new Contained([true, null])),
+                    new Field('', new IsNull())
                 ),
             ],
             'array of ints' => [
@@ -486,8 +487,8 @@ class ResponseBuilderTest extends TestCase
                 ),
                 new AnyOf(
                     '',
+                    new Collection('', new BeforeSet(new IsList()), new Field('', new IsString())),
                     new Field('', new IsNull()),
-                    new Collection('', new BeforeSet(new IsList()), new Field('', new IsString()))
                 ),
             ],
             'array of booleans, minItems' => [
@@ -526,7 +527,6 @@ class ResponseBuilderTest extends TestCase
                 ),
                 new AnyOf(
                     '',
-                    new Field('', new IsNull()),
                     new Collection(
                         '',
                         new BeforeSet(
@@ -534,10 +534,10 @@ class ResponseBuilderTest extends TestCase
                             new Contained([[1, 2.0, null], [4.0, null, 6]]),
                             new Count(2, 5),
                             new Unique()
-
                         ),
-                        new AnyOf('', new Field('', new IsNull()), new Field('', new IsNumber()))
-                    )
+                        new AnyOf('', new Field('', new IsNumber()), new Field('', new IsNull()))
+                    ),
+                    new Field('', new IsNull()),
                 ),
             ],
             'object with (string) name' => [
@@ -565,9 +565,8 @@ class ResponseBuilderTest extends TestCase
                 ),
                 new AnyOf(
                     '',
+                    new FieldSet('', new BeforeSet(new IsArray()), new Field('price', new IsFloat())),
                     new Field('', new IsNull()),
-                    new FieldSet('', new BeforeSet(new IsArray()), new Field('price', new IsFloat()))
-
                 ),
             ],
             'object with (string) name, (int) id, (bool) status' => [

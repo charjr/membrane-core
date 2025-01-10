@@ -6,9 +6,9 @@ namespace Membrane\Tests\Console\Template;
 
 use Membrane\Console\Template;
 use Membrane\OpenAPI\Specification\Request;
-use Membrane\OpenAPIReader\Method;
+use Membrane\OpenAPIReader\MembraneReader;
 use Membrane\OpenAPIReader\OpenAPIVersion;
-use Membrane\OpenAPIReader\Reader;
+use Membrane\OpenAPIReader\ValueObject\Valid\Enum\Method;
 use Membrane\OpenAPIRouter\RouteCollection;
 use Membrane\OpenAPIRouter\RouteCollector;
 use Membrane\OpenAPIRouter\Router;
@@ -25,13 +25,7 @@ use PHPUnit\Framework\TestCase;
 #[UsesClass(Field::class)]
 class RequestBuilderTest extends TestCase
 {
-    private Template\RequestBuilder $sut;
-    private $petstoreAPIPath = __DIR__ . '/../../fixtures/OpenAPI/docs/petstore-expanded.json';
-
-    protected function setUp(): void
-    {
-        $this->sut = new Template\RequestBuilder();
-    }
+    private string $petstoreAPIPath = __DIR__ . '/../../fixtures/OpenAPI/docs/petstore-expanded.json';
 
     #[Test, TestDox('createFromTemplate will return a string of PHP code that can evaluate to a CachedRequestBuilder')]
     public function createFromTemplateReturnsPHPString(): \RequestBuilderTemplateTest\Petstore\CachedRequestBuilder
@@ -45,22 +39,24 @@ class RequestBuilderTest extends TestCase
             'deletePet' => 'RequestBuilderTemplateTest\\Petstore\\Request\\DeletePet',
         ];
 
-        $phpString = $this->sut->createFromTemplate($namespace, $petstoreExpandedFilePath, $map);
+        $sut = new Template\RequestBuilder($namespace, $petstoreExpandedFilePath, $map);
+
+        $phpString = $sut->getCode();
 
         eval('//' . $phpString);
 
-        $openAPI = (new Reader([OpenAPIVersion::Version_3_0]))
+        $openAPI = (new MembraneReader([OpenAPIVersion::Version_3_0]))
             ->readFromAbsoluteFilePath($petstoreExpandedFilePath);
         $routeCollection = (new RouteCollector())
             ->collect($openAPI);
         $createdBuilder = eval(
-        sprintf(
-            'return new \\%s\\CachedRequestBuilder(new %s(new %s(%s)));',
-            $namespace,
-            Router::class,
-            RouteCollection::class,
-            var_export($routeCollection->routes, true)
-        )
+            sprintf(
+                'return new \\%s\\CachedRequestBuilder(new %s(new %s(%s)));',
+                $namespace,
+                Router::class,
+                RouteCollection::class,
+                var_export($routeCollection->routes, true)
+            )
         );
 
         self::assertInstanceOf('\RequestBuilderTemplateTest\Petstore\CachedRequestBuilder', $createdBuilder);
@@ -75,7 +71,7 @@ class RequestBuilderTest extends TestCase
     ): Request {
         $requestSpecification = new Request(
             $this->petstoreAPIPath,
-            'http://petstore.swagger.io/api/pets',
+            'https://petstore.swagger.io/v2/pets',
             Method::GET,
         );
 
@@ -91,8 +87,7 @@ class RequestBuilderTest extends TestCase
         Request $requestSpecification
     ): void {
         eval(
-        '
-
+            '
 namespace RequestBuilderTemplateTest\Petstore\Request;
 
 use Membrane;
